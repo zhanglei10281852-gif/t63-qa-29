@@ -62,11 +62,12 @@ func (s Service) AddCertification(ctx context.Context, input CertificationInput)
 	if err := s.Store.SaveDriver(ctx, updated, current.Version); err != nil {
 		return domain.Driver{}, apperror.Wrap("save certification", err)
 	}
-	auditCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
 	auditEvent := s.event(input.ActorID, input.RequestID, updated.ID, "certify", map[string]any{"vehicle_type": input.VehicleType})
-	if err := s.Store.AppendAudit(auditCtx, auditEvent); err != nil {
-		return domain.Driver{}, err
+	if err := s.Store.AppendAudit(ctx, auditEvent); err != nil {
+		return domain.Driver{}, apperror.Wrap("certification audit", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return domain.Driver{}, apperror.Wrap("certification context", err)
 	}
 	return updated, nil
 }
